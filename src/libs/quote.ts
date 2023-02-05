@@ -10,14 +10,7 @@ import {
 import { getProvider } from '../libs/providers'
 import { toReadableAmount, fromReadableAmount } from '../libs/conversion'
 
-const { abi: V3SwapRouterABI } = require('@uniswap/v3-periphery/artifacts/contracts/interfaces/ISwapRouter.sol/ISwapRouter.json')
-const { abi: PeripheryPaymentsABI } = require("@uniswap/v3-periphery/artifacts/contracts/interfaces/IPeripheryPayments.sol/IPeripheryPayments.json");
 const { abi: MulticallABI } = require("@uniswap/v3-periphery/artifacts/contracts/interfaces/IMulticall.sol/IMulticall.json");
-
-const V3SwapRouterAddress = '0xE592427A0AEce92De3Edee1F18E0157C05861564'
-const WETHAddress = '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6';
-const USDCAddress = '0x07865c6E87B9F70255377e024ace6630C1Eaa37F';
-const UNIADDRESS = '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984';
 
 export async function quote(): Promise<string> {
   const quoterContract = new ethers.Contract(
@@ -27,7 +20,7 @@ export async function quote(): Promise<string> {
   )
   const poolConstants = await getPoolConstants()
 
-  const quotedAmountOut1 = await quoterContract.callStatic.quoteExactInputSingle(
+  const quotedAmountOut = await quoterContract.callStatic.quoteExactInput(
     poolConstants.token0,
     poolConstants.token1,
     poolConstants.fee,
@@ -38,7 +31,7 @@ export async function quote(): Promise<string> {
     0
   )
 
-  const quotedAmountOut2 = await quoterContract.callStatic.quoteExactInputSingle(
+  const quotedAmountOut2 = await quoterContract.callStatic.quoteExactInput(
     poolConstants.token0,
     poolConstants.token1,
     poolConstants.fee,
@@ -49,13 +42,14 @@ export async function quote(): Promise<string> {
     0
   )
 
-  const calls = [quotedAmountOut1,quotedAmountOut2]
-
-  const encMultiCall = await quoterContract.callStatic.quoteExactInputSingle(
-    calls
-  )
-
-  return toReadableAmount(encMultiCall, CurrentConfig.tokens.out.decimals)
+  var calls = [quotedAmountOut, quotedAmountOut2]
+  var data = 0
+  try {
+    data = await quoterContract.methods.multicall(calls).send();
+  } catch (err) {
+    console.log(err);
+  }
+  return String(data)
 }
 
 async function getPoolConstants(): Promise<{
@@ -87,5 +81,3 @@ async function getPoolConstants(): Promise<{
     fee,
   }
 }
-
-quote()
