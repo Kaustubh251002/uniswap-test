@@ -10,9 +10,12 @@ import {
 import { getProvider } from '../libs/providers'
 import { toReadableAmount, fromReadableAmount } from '../libs/conversion'
 
+//IMPORTING THE MULTICALL ABI
 const { abi: MulticallABI } = require("@uniswap/v3-periphery/artifacts/contracts/interfaces/IMulticall.sol/IMulticall.json");
 
 export async function quote(): Promise<string> {
+  
+  //CONCATINATING ABIs OF THE QUOTER AND THE MULTICALL CONTRACT
   const quoterContract = new ethers.Contract(
     QUOTER_CONTRACT_ADDRESS,
     Quoter.abi.concat(MulticallABI),
@@ -20,7 +23,8 @@ export async function quote(): Promise<string> {
   )
   const poolConstants = await getPoolConstants()
 
-  const quotedAmountOut = await quoterContract.callStatic.quoteExactInput(
+  //CALCULTAING 2 OUTVALUES WITHOUT EXECUTING SWAPS
+  const quotedAmountOut = await quoterContract.quoteExactInput(
     poolConstants.token0,
     poolConstants.token1,
     poolConstants.fee,
@@ -31,7 +35,7 @@ export async function quote(): Promise<string> {
     0
   )
 
-  const quotedAmountOut2 = await quoterContract.callStatic.quoteExactInput(
+  const quotedAmountOut2 = await quoterContract.quoteExactInput(
     poolConstants.token0,
     poolConstants.token1,
     poolConstants.fee,
@@ -41,9 +45,12 @@ export async function quote(): Promise<string> {
     ).toString(),
     0
   )
-
+  
+  //ARRAY OF MULTICALLS
   var calls = [quotedAmountOut, quotedAmountOut2]
   var data = 0
+  
+  //EXECUTING THE MULTICALL (ERROR:TOO MANY ARGUMENTS SENT TO CONTRACT)
   try {
     data = await quoterContract.methods.multicall(calls).send();
   } catch (err) {
